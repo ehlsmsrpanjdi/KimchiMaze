@@ -460,6 +460,7 @@ MonoBehaviour:
   goalMargin: 1
   cubePrefab: {fileID: 1169427044397448820, guid: 54fffb2c487bd9247b01fb7f4194800c, type: 3}
   goalPrefab: {fileID: 1169427044397448820, guid: 2dd211c3d2f9aac4bb113666849065fc, type: 3}
+  playerPrefab: {fileID: 7797780921740866190, guid: 7b7b6eb68e947a74183610625fbe7efb, type: 3}
   entrance: {x: 1, y: 1, z: 0}
 --- !u!4 &1395812415
 Transform:

@@ -8,18 +8,18 @@ public static class MazeDebugUtility
     {
         public bool ok;
         public string message;
-        public int distance;               // start->goal 최단거리
-        public int reachableOpenCount;      // start에서 도달 가능한 길 칸 수
+        public int distance;
+        public int reachableOpenCount;
         public Vector3Int goal;
     }
 
     /// <summary>
-    /// goalMargin=1이면 (1..size-2)만 허용(경계면 전부 금지). size=13이면 goal 좌표에 0 또는 12가 나오면 실패.
+    /// goalMargin=1이면 (1..size-2)만 허용
     /// </summary>
     public static bool TrySelectGoalAndPath(
         bool[,,] maze,
         int size,
-        Vector3Int start,
+        Vector3Int start, // entrance 안쪽 시작점 (1,1,1)
         int goalMargin,
         out Vector3Int goal,
         out List<Vector3Int> path,
@@ -74,8 +74,8 @@ public static class MazeDebugUtility
             {
                 var nxt = cur + d;
                 if (!IsInBounds(nxt, size)) continue;
-                if (maze[nxt.x, nxt.y, nxt.z]) continue;          // wall
-                if (dist[nxt.x, nxt.y, nxt.z] != -1) continue;     // visited
+                if (maze[nxt.x, nxt.y, nxt.z]) continue;
+                if (dist[nxt.x, nxt.y, nxt.z] != -1) continue;
 
                 dist[nxt.x, nxt.y, nxt.z] = cd + 1;
                 parent[nxt.x, nxt.y, nxt.z] = cur;
@@ -83,16 +83,14 @@ public static class MazeDebugUtility
             }
         }
 
-        // 1) 경계면 전부 금지(goalMargin 기반) 중 최장거리
+        // goalMargin 내부에서 최장거리
         if (!TryPickFarthest(dist, size, (x, y, z, s) => IsInsideWithMargin(x, y, z, s, goalMargin), out goal))
         {
-            // 2) fallback: 코너만 금지(끝부분이 너무 빡세서 내부가 없을 때 대비)
             if (!TryPickFarthest(dist, size, NotCorner, out goal))
             {
-                // 3) fallback: 그냥 최장거리
                 if (!TryPickFarthest(dist, size, (_, __, ___, ____) => true, out goal))
                 {
-                    failReason = "No reachable open cell found (unexpected).";
+                    failReason = "No reachable open cell found.";
                     return false;
                 }
             }
@@ -100,7 +98,7 @@ public static class MazeDebugUtility
 
         if (dist[goal.x, goal.y, goal.z] < 0)
         {
-            failReason = $"Picked goal unreachable (unexpected): {goal}";
+            failReason = $"Picked goal unreachable: {goal}";
             return false;
         }
 
@@ -117,7 +115,7 @@ public static class MazeDebugUtility
     public static ValidationResult Validate(
         bool[,,] maze,
         int size,
-        Vector3Int start,
+        Vector3Int start, // (1,1,1)
         Vector3Int goal,
         int goalMargin)
     {
@@ -130,9 +128,9 @@ public static class MazeDebugUtility
             goal = goal
         };
 
-        if (!IsInBounds(start, size) || start != Vector3Int.zero)
+        if (!IsInBounds(start, size))
         {
-            r.message = $"Start invalid. Expected (0,0,0), got {start}";
+            r.message = $"Start out of bounds: {start}";
             return r;
         }
 
@@ -154,14 +152,12 @@ public static class MazeDebugUtility
             return r;
         }
 
-        // goal 경계 금지: goalMargin=1이면 0/size-1 포함하면 무조건 실패
         if (!IsInsideWithMargin(goal.x, goal.y, goal.z, size, goalMargin))
         {
             r.message = $"Goal violates boundary rule (margin={goalMargin}). goal={goal}, size={size}";
             return r;
         }
 
-        // BFS로 도달 가능/거리 계산
         var bfs = BfsDistance(maze, size, start, goal, out int reachableOpen);
         r.reachableOpenCount = reachableOpen;
         r.distance = bfs;

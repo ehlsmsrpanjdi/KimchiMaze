@@ -111,6 +111,8 @@ public class DebugWindow : EditorWindow
     {
         int size = t.MazeSize;
         int margin = t.GoalMargin;
+        Vector3Int entrance = t.Entrance; // (1,1,0)
+        Vector3Int start = new Vector3Int(entrance.x, entrance.y, entrance.z + 1); // (1,1,1)
 
         var gen = new MazeGenerator();
         var rng = new System.Random(Environment.TickCount);
@@ -122,10 +124,10 @@ public class DebugWindow : EditorWindow
         {
             int seed = rng.Next(randomSeedMin, randomSeedMax);
 
-            bool[,,] maze = gen.Generate(size, seed);
+            bool[,,] maze = gen.Generate(size, seed, entrance, t.LoopChance);
 
             if (!MazeDebugUtility.TrySelectGoalAndPath(
-                    maze, size, Vector3Int.zero, margin,
+                    maze, size, start, margin, // start = (1,1,1)
                     out var goal, out var path, out var reachableOpen, out var reason))
             {
                 fail++;
@@ -134,7 +136,7 @@ public class DebugWindow : EditorWindow
                 continue;
             }
 
-            var vr = MazeDebugUtility.Validate(maze, size, Vector3Int.zero, goal, margin);
+            var vr = MazeDebugUtility.Validate(maze, size, start, goal, margin);
             if (!vr.ok)
             {
                 fail++;
@@ -148,7 +150,6 @@ public class DebugWindow : EditorWindow
 
             if (buildInSceneEachIteration)
             {
-                // 느리지만 “진짜로 생성/삭제” 반복하고 싶을 때
                 Undo.RegisterFullObjectHierarchyUndo(t.gameObject, "Batch Build Iteration");
                 t.GenerateRandomAndBuild(seed);
                 t.ClearPuzzle();
@@ -163,6 +164,8 @@ public class DebugWindow : EditorWindow
     {
         int size = t.MazeSize;
         int margin = t.GoalMargin;
+        Vector3Int entrance = t.Entrance;
+        Vector3Int start = new Vector3Int(entrance.x, entrance.y, entrance.z + 1);
 
         var gen = new MazeGenerator();
 
@@ -173,14 +176,12 @@ public class DebugWindow : EditorWindow
 
         for (int i = 1; i <= n; i++)
         {
-            // 오늘 시드를 그대로만 쓰면 매번 동일 맵이므로, 테스트용으로만 seed를 섞습니다.
-            // (실제 게임 로직은 “오늘 날짜 그대로” 유지)
             int seed = unchecked(baseSeed * 73856093 ^ i * 19349663);
 
-            bool[,,] maze = gen.Generate(size, seed);
+            bool[,,] maze = gen.Generate(size, seed, entrance, t.LoopChance);
 
             if (!MazeDebugUtility.TrySelectGoalAndPath(
-                    maze, size, Vector3Int.zero, margin,
+                    maze, size, start, margin,
                     out var goal, out var path, out var reachableOpen, out var reason))
             {
                 fail++;
@@ -189,7 +190,7 @@ public class DebugWindow : EditorWindow
                 continue;
             }
 
-            var vr = MazeDebugUtility.Validate(maze, size, Vector3Int.zero, goal, margin);
+            var vr = MazeDebugUtility.Validate(maze, size, start, goal, margin);
             if (!vr.ok)
             {
                 fail++;

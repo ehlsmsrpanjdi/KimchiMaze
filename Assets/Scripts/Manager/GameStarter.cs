@@ -9,18 +9,21 @@ using UnityEditor;
 public class GameStarter : MonoBehaviour
 {
     [Header("Maze Settings")]
-    [SerializeField] private int mazeSize = 11;          // 홀수
-    [SerializeField] private float loopChance = 0.04f;   // 0.03~0.06 추천
-    [SerializeField] private int goalMargin = 1;         // 1이면 goal이 0/size-1 좌표 가지면 실패(끝부분/외벽 금지)
+    [SerializeField] private int mazeSize = 11;
+    [SerializeField] private float loopChance = 0.04f;
+    [SerializeField] private int goalMargin = 1;
 
     [Header("Prefabs")]
     [SerializeField] private GameObject cubePrefab;
     [SerializeField] private GameObject goalPrefab;
+    [SerializeField] private GameObject playerPrefab;
+
+    [Header("Camera")]
+    [SerializeField] private CameraController cameraController;
 
     [Header("Entrance/Start")]
-    [SerializeField] private Vector3Int entrance = new Vector3Int(1, 1, 0); // 외벽 구멍 1개
+    [SerializeField] private Vector3Int entrance = new Vector3Int(1, 1, 0);
 
-    // EditorWindow에서 참조하기 좋게 공개
     public int MazeSize => mazeSize;
     public int GoalMargin => goalMargin;
     public float LoopChance => loopChance;
@@ -28,9 +31,8 @@ public class GameStarter : MonoBehaviour
 
     private bool[,,] maze;
     private Vector3Int goalCell;
-
-    // 퍼즐 오브젝트를 한 곳에 모아 삭제/재생성을 빠르게
     private Transform puzzleRoot;
+    private PlayerController player;
 
     void Awake()
     {
@@ -39,7 +41,6 @@ public class GameStarter : MonoBehaviour
 
     void Start()
     {
-        // 자동 생성 원치 않으면 주석 처리
         GenerateTodayAndBuild();
     }
 
@@ -57,8 +58,6 @@ public class GameStarter : MonoBehaviour
         }
     }
 
-    // ====== EditorWindow용: 유지되어야 하는 API ======
-
     public void ClearPuzzle()
     {
         EnsurePuzzleRoot();
@@ -68,7 +67,15 @@ public class GameStarter : MonoBehaviour
             var child = puzzleRoot.GetChild(i).gameObject;
             DestroySmart(child);
         }
+
+        if (player != null)
+        {
+            DestroySmart(player.gameObject);
+            player = null;
+        }
+
         maze = null;
+        CubeVisibilityManager.Instance.Clear();
     }
 
     public void GenerateTodayAndBuild()
@@ -87,58 +94,43 @@ public class GameStarter : MonoBehaviour
         EnsurePuzzleRoot();
         ClearPuzzle();
 
-        // 생성
         var gen = new MazeGenerator();
         maze = gen.Generate(mazeSize, seed, entrance, loopChance);
 
-        // 목표 선택(입구에서 최장거리 + goalMargin 내부)
         if (!TryPickGoalAndPath(maze, mazeSize, entrance, goalMargin, out goalCell, out var path))
         {
             Debug.LogError($"[MAZE] Goal pick failed. seed={seed} entrance={entrance}");
             return;
         }
 
-        // 비주얼 빌드
+        CubeVisibilityManager.Instance.Initialize();
+
         BuildVisual();
+        SpawnPlayer();
 
         Debug.Log($"[MAZE BUILT] seed={seed} entrance={entrance} goal={goalCell} dist={path.Count - 1}");
     }
 
-    /// <summary>
-    /// 현재 생성된 미로가 유효한지 확인(도달 가능/시작점/goal 경계 금지)
-    /// </summary>
     public (bool ok, string msg, Vector3Int goal, int dist) ValidateCurrentMaze()
     {
         if (maze == null)
             return (false, "maze is null (not generated)", goalCell, -1);
 
-        // 요구: 시작지점이 entrance와 일치하는지
-        if (entrance != new Vector3Int(1, 1, 0))
-        {
-            // 입구를 고정하겠다 하셨으니, 정책상 체크를 넣어둡니다(원하면 제거 가능).
-        }
-
-        // 시작점(입구) 검사
         if (maze[entrance.x, entrance.y, entrance.z])
             return (false, $"entrance is wall: {entrance}", goalCell, -1);
 
-        // goal 검사(길인지)
         if (maze[goalCell.x, goalCell.y, goalCell.z])
             return (false, $"goal is wall: {goalCell}", goalCell, -1);
 
-        // goal 경계 금지 검사
         if (!IsInsideWithMargin(goalCell, mazeSize, goalMargin))
             return (false, $"goal violates boundary rule (margin={goalMargin}) goal={goalCell}", goalCell, -1);
 
-        // 도달 가능 검사 + 거리
         int dist = BfsDistance(maze, mazeSize, entrance, goalCell);
         if (dist < 0)
             return (false, $"goal not reachable entrance={entrance} goal={goalCell}", goalCell, -1);
 
         return (true, $"OK dist={dist}", goalCell, dist);
     }
-
-    // ====== 내부 구현 ======
 
     void BuildVisual()
     {
@@ -150,16 +142,40 @@ public class GameStarter : MonoBehaviour
                 {
                     Vector3 pos = new Vector3(x, y, z);
 
-                    if (maze[x, y, z]) // wall
+                    if (maze[x, y, z])
                     {
                         var cube = InstantiateSmart(cubePrefab, pos, Quaternion.identity, puzzleRoot);
-                        cube.isStatic = true;
+                        cube.isStatic = false;
+                        CubeVisibilityManager.Instance.RegisterCube(new Vector3Int(x, y, z), cube);
                     }
                     else if (x == goalCell.x && y == goalCell.y && z == goalCell.z)
                     {
                         InstantiateSmart(goalPrefab, pos, Quaternion.identity, puzzleRoot);
                     }
                 }
+    }
+
+    void SpawnPlayer()
+    {
+        if (player != null)
+        {
+            DestroySmart(player.gameObject);
+        }
+
+        var playerObj = InstantiateSmart(playerPrefab, Vector3.zero, Quaternion.identity, transform);
+        player = playerObj.GetComponent<PlayerController>();
+
+        if (player != null)
+        {
+            player.Initialize(entrance, maze, mazeSize);
+
+            if (cameraController != null)
+            {
+                cameraController.SetTarget(player.transform);
+            }
+
+            CubeVisibilityManager.Instance.SetPlayer(player);
+        }
     }
 
     static bool TryPickGoalAndPath(bool[,,] maze, int size, Vector3Int start, int margin,
@@ -210,7 +226,6 @@ public class GameStarter : MonoBehaviour
             }
         }
 
-        // margin 내부에서 최장거리
         int bestD = -1;
         Vector3Int best = start;
 
@@ -232,7 +247,6 @@ public class GameStarter : MonoBehaviour
         if (bestD < 0) return false;
         goal = best;
 
-        // 경로 복원
         List<Vector3Int> rev = new List<Vector3Int>(256);
         var p = goal;
         while (p != new Vector3Int(-1, -1, -1))
@@ -286,7 +300,6 @@ public class GameStarter : MonoBehaviour
 
                 dist[nxt.x, nxt.y, nxt.z] = cd + 1;
                 q.Enqueue(nxt);
-                dist[nxt.x, nxt.y, nxt.z] = cd + 1;
             }
         }
         return -1;
