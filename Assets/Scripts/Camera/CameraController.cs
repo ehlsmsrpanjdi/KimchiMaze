@@ -56,10 +56,15 @@ public class CameraController : MonoBehaviour
         Vector3 targetPos = target.position + smoothOffset;
         transform.position = Vector3.Lerp(transform.position, targetPos, followSpeed * Time.deltaTime);
 
-        // Top/Bottom에서 롤(뒤집힘) 방지용: up 벡터를 yaw 기반으로 안정화
+        // Up vector도 부드럽게 전환
+        Vector3 currentUp = GetStableUpVector(currentDirection, baseYaw);
+        Vector3 targetUp = GetStableUpVector(targetDirection, baseYaw);
+        Vector3 smoothUp = Vector3.Slerp(currentUp, targetUp, rotationProgress).normalized;
+
         Vector3 forward = (target.position - transform.position).normalized;
-        Vector3 up = GetStableUpVector(currentDirection, baseYaw);
-        transform.rotation = Quaternion.LookRotation(forward, up);
+        Quaternion targetRotation = Quaternion.LookRotation(forward, smoothUp);
+
+        transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, followSpeed * Time.deltaTime);
     }
 
     void HandleRotationInput()
