@@ -2,8 +2,23 @@ using System;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-public class SceneManager : MonoBehaviour
+public class SceneManager
 {
+    
+    private static SceneManager instance;
+
+    public static SceneManager Instance
+    {
+        get 
+        {
+            if (instance == null)
+            {
+                instance = new SceneManager();
+            }
+            return instance;
+        }
+    }
+    
     [SerializeField]
     private string GameSceneName = "GameScene";
     [SerializeField]
@@ -19,13 +34,7 @@ public class SceneManager : MonoBehaviour
     private int CountToday;
     private bool ADBonus; //±¤°í 
 
-  
-
-    private void Awake()
-    {
-        
-    }
-
+ 
     public void GiveAdBonusToday()
     {
         if (ADBonus)
@@ -38,12 +47,19 @@ public class SceneManager : MonoBehaviour
     
 
     
-    /*
-    public EnterResult TryToGameScene()
-    { 
+    
+    public DateManager.EnterResult TryToGameScene()
+    {
+        var result = DateManager.Instance.TryConsumeGameEntry();
+
+        if (result == DateManager.EnterResult.Success)
+        {
+            UnityEngine.SceneManagement.SceneManager.LoadScene(GameSceneName);
+        }
+
+        return result;
         
     }
-     */
 
 
     private void Reset()

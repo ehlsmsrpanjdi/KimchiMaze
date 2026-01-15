@@ -6,7 +6,7 @@ public class GameManager : MonoBehaviour
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Awake()
     {
-        dateMangaer = new DateManager();
+        dateMangaer = DateManager.Instance;
         dateMangaer.init(this);
     }
 
