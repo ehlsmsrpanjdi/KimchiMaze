@@ -8,6 +8,17 @@ using UnityEditor;
 
 public class GameStarter : MonoBehaviour
 {
+    static GameStarter instance;
+    public static GameStarter Instance
+    {
+        get
+        {
+            return instance;
+        }
+    }
+
+    public Action OnMazeCompleted;
+
     [Header("Maze Settings")]
     [SerializeField] private int mazeSize = 11;
     [SerializeField] private float loopChance = 0.04f;
@@ -36,6 +47,11 @@ public class GameStarter : MonoBehaviour
 
     void Awake()
     {
+        if (instance != null && instance != this)
+        {
+            Destroy(instance.gameObject);
+        }
+        instance = this;
         EnsurePuzzleRoot();
     }
 
@@ -167,7 +183,7 @@ public class GameStarter : MonoBehaviour
 
         if (player != null)
         {
-            player.Initialize(entrance, maze, mazeSize);
+            player.Initialize(entrance, maze, mazeSize, goalCell); // goalCell 추가
 
             if (cameraController != null)
             {
@@ -175,8 +191,45 @@ public class GameStarter : MonoBehaviour
             }
 
             CubeVisibilityManager.Instance.SetPlayer(player);
+
+            // 도착 이벤트 구독 (UI에서도 구독 가능)
+            player.OnGoalReached += OnPlayerReachedGoal;
         }
     }
+
+    async void OnPlayerReachedGoal(float clearTime)
+    {
+        //Debug.Log($"Submitting score: {clearTime:F2}s");
+
+        //// TODO: 로딩 UI 표시 (여기서 시작)
+
+        //string today = System.DateTime.Now.ToString("yyyyMMdd");
+        //string playerName = "Player" + UnityEngine.Random.Range(1000, 9999);
+
+        //int rank = await FirebaseManager.Instance.SubmitScore(today, playerName, clearTime);
+
+        //// TODO: 로딩 UI 숨김 (여기서 종료)
+
+        //if (rank > 0)
+        //{
+        //    Debug.Log($"Your rank: {rank}");
+        //    // TODO: 결과 UI 표시
+        //}
+    }
+
+    //   Debug
+
+    public void DebugPath()
+    {
+        player.ShowPathToGoal();
+    }
+
+    public void DebugReach()
+    {
+        player.DebugGoal();
+    }
+
+    // =============================
 
     static bool TryPickGoalAndPath(bool[,,] maze, int size, Vector3Int start, int margin,
         out Vector3Int goal, out List<Vector3Int> path)

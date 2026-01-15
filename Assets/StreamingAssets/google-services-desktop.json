@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "936816480249",
+    "firebase_url": "https://projectmaze-ea0ef-default-rtdb.firebaseio.com",
+    "project_id": "projectmaze-ea0ef",
+    "storage_bucket": "projectmaze-ea0ef.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:936816480249:android:2b3941bcdf1b3daa9b7728",
+        "android_client_info": {
+          "package_name": "com.kimchicompany.kimchimaze"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBuJqa7wfeGYXJKE41hxrEbnlxdm41PebU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
