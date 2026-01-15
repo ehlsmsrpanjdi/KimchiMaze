@@ -3,28 +3,40 @@
 public class CameraController : MonoBehaviour
 {
     [SerializeField] private Transform target;
+
+    [Header("Orbit")]
     [SerializeField] private float distance = 10f;
-    [SerializeField] private float heightOffset = 5f;
-    [SerializeField] private float rotationSpeed = 5f;
-    [SerializeField] private float followSpeed = 5f;
+    [SerializeField] private float focusHeight = 1.0f;   // 플레이어 바라보는 높이(머리쪽)
+    [SerializeField] private float rotationSpeed = 6f;    // 0~1 진행 속도(클수록 빠름)
 
     public enum ViewDirection { Front, Right, Back, Left, Top, Bottom }
 
-    // 수평 4방향 기준 (0=Front,1=Right,2=Back,3=Left)
-    private int baseYaw = 0;
+    // 수평 4방향 (0=Front,1=Right,2=Back,3=Left)
+    private int yawIndex = 0;
+    private int targetYawIndex = 0;
 
-    // 수직 4단계 (Side -> Top -> OppositeSide -> Bottom -> Side)
-    private enum VerticalState { Side = 0, Top = 1, OppositeSide = 2, Bottom = 3 }
+    // 수직 4단계 (0=Side,1=Top,2=Opposite(뒤집힘),3=Bottom)
+    private int pitchIndex = 0;
+    private int targetPitchIndex = 0;
 
-    private VerticalState currentState = VerticalState.Side;
-    private VerticalState targetState = VerticalState.Side;
+    private float t = 1f;                 // 0~1
+    private Quaternion startRot;
+    private Quaternion endRot;
 
-    private ViewDirection currentDirection = ViewDirection.Front;
-    private ViewDirection targetDirection = ViewDirection.Front;
+    private Vector3 startOffset;
+    private Vector3 endOffset;
 
-    private float rotationProgress = 1f; // 0~1, 1이면 회전 완료
+    public bool IsRotating => t < 1f;
 
-    public ViewDirection CurrentDirection => currentDirection;
+    // 기존 코드 호환용
+    public ViewDirection CurrentDirection { get; private set; } = ViewDirection.Front;
+
+    void Start()
+    {
+        // 초기 상태를 현재 트랜스폼 기준으로 맞추고 싶으면 여기서 복원 로직을 추가할 수 있음.
+        // 지금은 (Front, Side) 시작.
+        ApplyInstant();
+    }
 
     void Update()
     {
@@ -35,135 +47,138 @@ public class CameraController : MonoBehaviour
     {
         if (target == null) return;
 
-        // 회전 진행
-        if (rotationProgress < 1f)
+        // 진행
+        if (t < 1f)
         {
-            rotationProgress += rotationSpeed * Time.deltaTime;
-            if (rotationProgress >= 1f)
+            t += rotationSpeed * Time.deltaTime;
+            if (t >= 1f)
             {
-                rotationProgress = 1f;
-                currentState = targetState;
-                currentDirection = targetDirection;
+                t = 1f;
+
+                yawIndex = targetYawIndex;
+                pitchIndex = targetPitchIndex;
+                UpdateCurrentDirection();
+
+                // 회전 완료 시점 이벤트가 필요하면 여기서 호출
                 NotifyCameraRotation();
             }
         }
 
-        Vector3 currentOffset = GetOffsetByDirection(currentDirection, baseYaw);
-        Vector3 targetOffset = GetOffsetByDirection(targetDirection, baseYaw);
+        Vector3 focus = target.position + Vector3.up * focusHeight;
 
-        Vector3 smoothOffset = Vector3.Lerp(currentOffset, targetOffset, rotationProgress);
+        // 회전/위치 보간(직접 만든 회전만 사용, LookRotation 없음)
+        Quaternion rot = Quaternion.Slerp(startRot, endRot, t);
+        Vector3 offset = Vector3.Lerp(startOffset, endOffset, t);
 
-        Vector3 targetPos = target.position + smoothOffset;
-        transform.position = Vector3.Lerp(transform.position, targetPos, followSpeed * Time.deltaTime);
-
-        // Top/Bottom에서 롤(뒤집힘) 방지용: up 벡터를 yaw 기반으로 안정화
-        Vector3 forward = (target.position - transform.position).normalized;
-        Vector3 up = GetStableUpVector(currentDirection, baseYaw);
-        transform.rotation = Quaternion.LookRotation(forward, up);
+        transform.position = focus + offset;
+        transform.rotation = rot;
     }
 
     void HandleRotationInput()
     {
-        if (rotationProgress < 1f) return;
+        if (IsRotating) return;
 
-        if (Input.GetKeyDown(KeyCode.LeftArrow)) RotateHorizontal(-1);
-        else if (Input.GetKeyDown(KeyCode.RightArrow)) RotateHorizontal(1);
-        else if (Input.GetKeyDown(KeyCode.UpArrow)) RotateVertical(+1);
-        else if (Input.GetKeyDown(KeyCode.DownArrow)) RotateVertical(-1);
+        bool changed = false;
+
+        if (Input.GetKeyDown(KeyCode.RightArrow))
+        {
+            targetYawIndex = (yawIndex + 3) % 4;
+            targetPitchIndex = pitchIndex;
+            changed = true;
+        }
+        else if (Input.GetKeyDown(KeyCode.LeftArrow))
+        {
+            targetYawIndex = (yawIndex + 1) % 4;
+            targetPitchIndex = pitchIndex;
+            changed = true;
+        }
+        else if (Input.GetKeyDown(KeyCode.UpArrow))
+        {
+            targetYawIndex = yawIndex;
+            targetPitchIndex = (pitchIndex + 1) % 4; // Side->Top->Opposite->Bottom->Side
+            changed = true;
+        }
+        else if (Input.GetKeyDown(KeyCode.DownArrow))
+        {
+            targetYawIndex = yawIndex;
+            targetPitchIndex = (pitchIndex + 3) % 4; // 역방향
+            changed = true;
+        }
+
+        if (!changed) return;
+
+        BeginTransition();
     }
 
-    // 좌/우: 항상 yaw를 누적 (Top/Bottom 상태에서도 yaw를 유지해두면 복귀 시 일관됨)
-    void RotateHorizontal(int dir)
+    void BeginTransition()
     {
-        baseYaw = (baseYaw + dir + 4) % 4;
+        // 시작 상태(현재 인덱스) 회전/오프셋
+        startRot = ComputeOrbitRotation(yawIndex, pitchIndex);
+        startOffset = startRot * new Vector3(0f, 0f, -distance);
 
-        // 현재(또는 목표) 수직 상태는 유지한 채, 방향만 재계산
-        targetDirection = DirectionFromState(targetState, baseYaw);
-        rotationProgress = 0f;
+        // 목표 상태 회전/오프셋
+        endRot = ComputeOrbitRotation(targetYawIndex, targetPitchIndex);
+        endOffset = endRot * new Vector3(0f, 0f, -distance);
+
+        // 진행 시작
+        t = 0f;
     }
 
-    // 상/하: 4단계 수직 사이클
-    // Up: Side->Top->Opposite->Bottom->Side
-    // Down: 반대
-    void RotateVertical(int dir)
+    // "진짜 공전 회전": yaw는 월드 Y축, pitch는 월드 X축 기준으로 먼저 적용 후 yaw
+    // 이 회전 자체가 카메라의 forward/up/right를 결정하므로 플립이 생길 여지가 줄어듭니다.
+    Quaternion ComputeOrbitRotation(int yawI, int pitchI)
     {
-        int s = (int)currentState;
-        if (dir > 0) s = (s + 1) % 4;
-        else s = (s + 3) % 4; // -1을 모듈로 처리
+        float yaw = yawI * 90f;
+        float pitch = pitchI * 90f;
 
-        targetState = (VerticalState)s;
-        targetDirection = DirectionFromState(targetState, baseYaw);
-        rotationProgress = 0f;
+        Quaternion yawRot = Quaternion.AngleAxis(yaw, Vector3.up);
+        Quaternion pitchRot = Quaternion.AngleAxis(pitch, Vector3.right);
+
+        // pitch 먼저, 그 다음 yaw
+        return yawRot * pitchRot;
     }
 
-    ViewDirection DirectionFromState(VerticalState state, int yaw)
+    void UpdateCurrentDirection()
     {
-        if (state == VerticalState.Top) return ViewDirection.Top;
-        if (state == VerticalState.Bottom) return ViewDirection.Bottom;
+        if (pitchIndex == 1) { CurrentDirection = ViewDirection.Top; return; }
+        if (pitchIndex == 3) { CurrentDirection = ViewDirection.Bottom; return; }
 
-        int y = yaw;
-        if (state == VerticalState.OppositeSide) y = (yaw + 2) % 4;
+        // Side(0) 또는 Opposite(2)
+        int y = yawIndex;
+        if (pitchIndex == 2) y = (yawIndex + 2) % 4; // 반대면
 
-        return y switch
+        CurrentDirection = y switch
         {
             0 => ViewDirection.Front,
-            1 => ViewDirection.Right,
+            1 => ViewDirection.Left,
             2 => ViewDirection.Back,
-            _ => ViewDirection.Left,
+            _ => ViewDirection.Right,
         };
     }
 
-    Vector3 GetOffsetByDirection(ViewDirection dir, int yaw)
+    void ApplyInstant()
     {
-        // Side(Front/Right/Back/Left)는 기존 방식 유지
-        // Top/Bottom은 위/아래에 고정. (yaw는 up 벡터 안정화에만 사용)
-        switch (dir)
-        {
-            case ViewDirection.Front: return new Vector3(0, heightOffset, -distance);
-            case ViewDirection.Back: return new Vector3(0, heightOffset, distance);
-            case ViewDirection.Left: return new Vector3(-distance, heightOffset, 0);
-            case ViewDirection.Right: return new Vector3(distance, heightOffset, 0);
-            case ViewDirection.Top: return new Vector3(0, distance, 0);
-            case ViewDirection.Bottom: return new Vector3(0, -distance, 0);
-            default: return new Vector3(0, heightOffset, -distance);
-        }
-    }
+        targetYawIndex = yawIndex;
+        targetPitchIndex = pitchIndex;
 
-    Vector3 GetStableUpVector(ViewDirection dir, int yaw)
-    {
-        // Top/Bottom에서 LookAt만 쓰면 카메라가 롤로 뒤집히기 쉬움.
-        // yaw 기준으로 "화면 위"를 고정해줌.
-        if (dir == ViewDirection.Top || dir == ViewDirection.Bottom)
-        {
-            return yaw switch
-            {
-                0 => Vector3.forward,
-                1 => Vector3.left,
-                2 => Vector3.back,
-                _ => Vector3.right,
-            };
-        }
+        startRot = endRot = ComputeOrbitRotation(yawIndex, pitchIndex);
+        startOffset = endOffset = startRot * new Vector3(0f, 0f, -distance);
+        t = 1f;
 
-        return Vector3.up;
+        UpdateCurrentDirection();
     }
 
     void NotifyCameraRotation()
     {
+        // 기존 연결 유지
         var player = target?.GetComponent<PlayerController>();
         if (player != null)
-        {
-            // CubeVisibilityManager 쪽 시그니처에 맞춰 구현되어 있어야 합니다.
-            CubeVisibilityManager.Instance.OnCameraRotated(currentDirection, player.GridPosition);
-        }
+            CubeVisibilityManager.Instance.OnCameraRotated(CurrentDirection, player.GridPosition);
     }
 
     public void SetTarget(Transform newTarget)
     {
         target = newTarget;
-        if (target != null)
-        {
-            transform.position = target.position + GetOffsetByDirection(currentDirection, baseYaw);
-            transform.LookAt(target.position);
-        }
+        ApplyInstant();
     }
 }

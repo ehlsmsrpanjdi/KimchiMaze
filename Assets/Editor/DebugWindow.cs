@@ -48,6 +48,16 @@ public class DebugWindow : EditorWindow
         EditorGUILayout.Space(8);
         EditorGUILayout.LabelField("Actions", EditorStyles.boldLabel);
 
+        if (GUILayout.Button("DebugPath"))
+        {
+            GameStarter.Instance.DebugPath();
+        }
+
+        if (GUILayout.Button("DebugOnReach"))
+        {
+            GameStarter.Instance.DebugReach();
+        }
+
         using (new EditorGUILayout.HorizontalScope())
         {
             if (GUILayout.Button("Reset (Delete Puzzle)", GUILayout.Height(28)))
