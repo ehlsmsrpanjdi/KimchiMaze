@@ -71,7 +71,7 @@ public class ShopWindow : MonoBehaviour
             list.Add(new ShopItemData
             {
                 id = i,
-                name = $"이아템 이름{i}",
+                name = $"ItemName{i}",
                 price = 100*i
 
             });
