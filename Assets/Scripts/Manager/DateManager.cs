@@ -1,13 +1,32 @@
 using System;
+using System.Data;
 using Unity.VisualScripting;
 using UnityEngine;
 
-public class DateManager : MonoBehaviour
+public class DateManager
 {
 
+    private static DateManager instance;
+
+    public static DateManager Instance
+    {
+        get
+        {
+            if (instance == null)
+            {
+                instance = new DateManager();
+            }
+            return instance;
+        }
+    }
+
+
+    private DateManager()
+    {
+        InitializeTimeZone();
+    }
+
     private int resetTime = 12;
-
-
     private GameManager gameManager;
 
     private const string Key_Day = "Day_Key";
@@ -30,6 +49,7 @@ public class DateManager : MonoBehaviour
     {
         gameManager = gm;
         
+        DayReset();
        
     }
     private string GetDayKeyNow()
@@ -38,12 +58,27 @@ public class DateManager : MonoBehaviour
         DateTime effective = (kstNow.Hour < resetTime) ? kstNow.Date.AddDays(-1) : kstNow.Date;
         return effective.ToString("yyyyMMdd");
     }
-    /*
-    public EnterResult TryConsumeGameEntry()
+  
+
+    private void InitializeTimeZone()
     {
-        DayReset();
+        try
+        {
+            kst = TimeZoneInfo.FindSystemTimeZoneById("Korea Standard Time");
+        }
+        catch
+        {
+            try
+            {
+                kst = TimeZoneInfo.FindSystemTimeZoneById("Asia/Seoul");
+            }
+            catch
+            {
+                // 플랫폼 호환성 문제 발생 시 로컬 시스템 시간으로 폴백
+                kst = TimeZoneInfo.Local;
+            }
+        }
     }
-     */
 
 
     private DateTime GetKstNow()
@@ -70,6 +105,39 @@ public class DateManager : MonoBehaviour
 
     }
 
+    public EnterResult TryConsumeGameEntry()
+    {
+        DayReset();
+
+        int used = PlayerPrefs.GetInt(Key_Count, 0);
+        int max = GetMaxTodayInternal();
+
+        if (used < max)
+        {
+            PlayerPrefs.SetInt(Key_Count, used + 1);
+            PlayerPrefs.Save();
+            return EnterResult.Success;
+        }
+
+        // 한도 초과일 때: 무엇을 해야 더 들어갈 수 있는지 안내
+        bool pass = IsPassPurchased();
+        bool adUsed = IsAdBonusUsed();
+
+
+        if (!adUsed)
+        { 
+        return EnterResult.NeedAd;
+        }
+
+        if (!pass)
+        { 
+        return EnterResult.NeedPurchase;
+        }
+
+
+        return EnterResult.NoMore;
+    }
+
     private int GetMaxTodayInternal()
     {
         bool pass = PlayerPrefs.GetInt(Key_Pass, 0) == 1;
@@ -80,4 +148,7 @@ public class DateManager : MonoBehaviour
         return Mathf.Min(3, max);
     }
 
+
+    private bool IsPassPurchased() => PlayerPrefs.GetInt(Key_Pass, 0) == 1;
+    private bool IsAdBonusUsed() => PlayerPrefs.GetInt(Key_AD, 0) == 1;
 }
