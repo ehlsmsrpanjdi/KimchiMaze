@@ -50,7 +50,14 @@ public class SceneManager
     
     public DateManager.EnterResult TryToGameScene()
     {
-        var result = DateManager.Instance.
+        var result = DateManager.Instance.TryConsumeGameEntry();
+
+        if (result == DateManager.EnterResult.Success)
+        {
+            UnityEngine.SceneManagement.SceneManager.LoadScene(GameSceneName);
+        }
+
+        return result;
         
     }
 

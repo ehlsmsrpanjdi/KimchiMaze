@@ -138,12 +138,15 @@ public class DateManager
         return EnterResult.NoMore;
     }
 
+
+    
+
     private int GetMaxTodayInternal()
     {
         bool pass = PlayerPrefs.GetInt(Key_Pass, 0) == 1;
         bool ad = PlayerPrefs.GetInt(Key_AD, 0) == 1;
 
-        int baseMax = pass ? 2 : 0;
+        int baseMax = pass ? 2 : 1;
         int max = baseMax + (ad ? 1 : 0);
         return Mathf.Min(3, max);
     }
