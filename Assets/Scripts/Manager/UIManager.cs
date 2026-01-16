@@ -17,10 +17,15 @@ public class UIManager : MonoBehaviour
     public void OpenShop()
     {
         if (opened.ContainsKey(ShopKey))
+        { 
             return;
+        }
+
+        List<ShopItemData> LoadItems = ShopDataLoader.GetItems();
 
         var instance = Instantiate(shopWindow, windowRoot);
-        instance.Init(this);
+
+        instance.Init(this,LoadItems);
         opened[ShopKey] = instance.gameObject;
     }
 
@@ -33,6 +38,9 @@ public class UIManager : MonoBehaviour
         opened.Remove(ShopKey);
     }
 
-
+    private void PurchaseRequest(ShopItemData item)
+    { 
+        //여기에 통신 로직 ㄱㄱ
+    }
 
 }
