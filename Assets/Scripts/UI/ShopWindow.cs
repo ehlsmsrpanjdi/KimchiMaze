@@ -17,29 +17,41 @@ public class ShopWindow : MonoBehaviour
 
     [Header("Left Preview")]
     [SerializeField] private TMP_Text selectedNameText;
+    [SerializeField] private TMP_Text selectedPrceText;
+    [SerializeField] private Button confrimButton;
     //[SerializeField] private Sprite selectedItemSprite;
 
     [Header("Right List")]
-    [SerializeField] private Transform contentRoot;     
+    [SerializeField] private Transform contentRoot;
     [SerializeField] private ShopItemSlot slotPrefab;
 
 
     private UIManager ui;
     private Dictionary<ItemType, List<ShopItemData>> allItemDic = new();
+    private ShopItemData curSelectedItem;
 
 
-    public void Init(UIManager uimanger , List<ShopItemData> loadItems)
+    public void Init(UIManager uimanger, List<ShopItemData> loadItems)
     {
         ui = uimanger;
 
         closeButton.onClick.RemoveAllListeners();
         closeButton.onClick.AddListener(() => ui.CloseShop());
 
+        confrimButton.onClick.RemoveAllListeners();
+        confrimButton.onClick.AddListener(() =>
+        {
+            if (curSelectedItem != null)
+            {
+                ItemsBuy?.Invoke(curSelectedItem);
+            }
+        });
+
         blockTabBtn.onClick.AddListener(() =>
         {
             OnTabSelected(ItemType.Block);
             UpdateButtonStates(ItemType.Block);
-            
+
         });
         characterTabBtn.onClick.AddListener(() =>
         {
@@ -63,7 +75,7 @@ public class ShopWindow : MonoBehaviour
         foreach (ItemType type in System.Enum.GetValues(typeof(ItemType)))
         {
             allItemDic[type] = new List<ShopItemData>();
-        
+
         }
 
         foreach (var item in items)
@@ -73,19 +85,19 @@ public class ShopWindow : MonoBehaviour
                 allItemDic[item.type].Add(item);
             }
         }
-        
+
     }
 
 
 
-    private void OnTabSelected(ItemType type) 
+    private void OnTabSelected(ItemType type)
     {
         if (allItemDic.TryGetValue(type, out var shopItemDatas))
         {
             SettingSlot(shopItemDatas);
 
             if (shopItemDatas.Count > 0)
-            { 
+            {
                 OnSelectItem(shopItemDatas[0]);
             }
         }
@@ -102,11 +114,11 @@ public class ShopWindow : MonoBehaviour
         foreach (var item in items)
         {
             var slot = Instantiate(slotPrefab, contentRoot);
-            slot.Bind(item, (data) => {
-                                OnSelectItem(data);
-                ItemsBuy?.Invoke(data); //구매했을때
+            slot.Bind(item, (data) =>
+            {
+                OnSelectItem(data);
 
-                });
+            });
         }
 
 
@@ -116,6 +128,8 @@ public class ShopWindow : MonoBehaviour
     private void OnSelectItem(ShopItemData data)
     {
         selectedNameText.text = data.name;
+        selectedPrceText.text = $"{data.price} Gold";
+        
         //스프라이트는 아직 미구현 
     }
 
@@ -125,5 +139,5 @@ public class ShopWindow : MonoBehaviour
         characterTabBtn.interactable = (type != ItemType.Character);
     }
 
-   
+
 }
