@@ -516,7 +516,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e0f0146cf1174f64d819c913cc707cd4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  mazeSize: 5
+  mazeSize: 13
   loopChance: 0.04
   goalMargin: 1
   cubePrefab: {fileID: 1169427044397448820, guid: 54fffb2c487bd9247b01fb7f4194800c, type: 3}

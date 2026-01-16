@@ -29,6 +29,30 @@ public class DebugWindow : EditorWindow
     {
         EditorGUILayout.Space(6);
 
+        if (GUILayout.Button("ShowAd"))
+        {
+            AdsManager.Instance.ShowRewarded(
+                onReward: () =>
+                {
+                    Debug.Log("[AdsDebug] Rewarded COMPLETED -> 보상 지급 처리 실행");
+
+                    // 예시 1) 코인 지급(당신 프로젝트의 매니저/인벤토리로 교체)
+                    // CurrencyManager.Instance.Add(100);
+
+                    // 예시 2) 테스트용 플래그/카운트 증가
+                    // PlayerPrefs.SetInt("RewardDebugCount", PlayerPrefs.GetInt("RewardDebugCount", 0) + 1);
+                },
+                onFail: () =>
+                {
+                    Debug.LogWarning("[AdsDebug] Rewarded 실패/스킵/준비안됨 -> 보상 없음");
+                },
+                onClosed: () =>
+                {
+                    Debug.Log("[AdsDebug] Rewarded 닫힘(성공/실패 무관)");
+                }
+            );
+        }
+
         // 타겟 자동 탐색
         if (target == null)
         {
@@ -57,6 +81,8 @@ public class DebugWindow : EditorWindow
         {
             GameStarter.Instance.DebugReach();
         }
+
+
 
         using (new EditorGUILayout.HorizontalScope())
         {
