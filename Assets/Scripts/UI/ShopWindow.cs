@@ -50,22 +50,9 @@ public class ShopWindow : MonoBehaviour
 
         CreateItem(loadItems);
 
+        OnTabSelected(ItemType.Character);
+        UpdateButtonStates(ItemType.Character);//처음화면
 
-
-
-             
-
-        /*
-         보여주기
-        var list = CreateItem(20);
-
-
-        SettingSlot(list);
-        if (list.Count > 0)
-        {
-            OnSelectItem(list[0]);
-        }
-         */
 
     }
 
