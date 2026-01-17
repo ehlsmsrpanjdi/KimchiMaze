@@ -139,6 +139,12 @@ public class DateManager
     }
 
 
+    public void ApplyAdBonus()
+    {
+        PlayerPrefs.SetInt(Key_AD, 1);
+        PlayerPrefs.Save();
+    }
+
     
 
     private int GetMaxTodayInternal()
@@ -153,5 +159,5 @@ public class DateManager
 
 
     private bool IsPassPurchased() => PlayerPrefs.GetInt(Key_Pass, 0) == 1;
-    private bool IsAdBonusUsed() => PlayerPrefs.GetInt(Key_AD, 0) == 1;
+    public bool IsAdBonusUsed() => PlayerPrefs.GetInt(Key_AD, 0) == 1;
 }

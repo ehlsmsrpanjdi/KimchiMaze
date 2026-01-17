@@ -18,6 +18,7 @@ public class ShopItemData
     public int id;
     public string name;
     public int price;
+    public int diaprice;
     public ItemType type;
 }
 
