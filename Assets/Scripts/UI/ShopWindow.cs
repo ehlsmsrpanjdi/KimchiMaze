@@ -127,6 +127,9 @@ public class ShopWindow : MonoBehaviour
 
     private void OnSelectItem(ShopItemData data)
     {
+        curSelectedItem = data;
+       
+
         selectedNameText.text = data.name;
         selectedPrceText.text = $"{data.price} Gold";
         
