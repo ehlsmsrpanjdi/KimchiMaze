@@ -1,6 +1,5 @@
+Ôªøusing System.Collections.Generic;
 using UnityEngine;
-using System.Collections.Generic;
-using UnityEditor.Build.Content;
 
 public static class ShopDataLoader
 {
@@ -10,7 +9,7 @@ public static class ShopDataLoader
     {
         TextAsset json = Resources.Load<TextAsset>(JsonPath);
 
-        if(json == null)
+        if (json == null)
         {
             return new List<ShopItemData>();
         }
@@ -22,7 +21,7 @@ public static class ShopDataLoader
         }
         else
         {
-            Debug.Log("[ShopDataLoader] ∫Û ∏ÆΩ∫∆Æ ª˝º∫");
+            Debug.Log("[ShopDataLoader] Îπà Î¶¨Ïä§Ìä∏ ÏÉùÏÑ±");
             return new List<ShopItemData>();
         }
     }

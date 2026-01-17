@@ -2,4 +2,6 @@
 <projectSettings>
   <projectSetting name="com.google.firebaseAnalyticsCookie" value="16a96c49b4f6417884fcbf44254c0b56" />
   <projectSetting name="com.google.firebaseAnalyticsEnabled" value="True" />
+  <projectSetting name="GooglePlayServices.PromptBeforeAutoResolution" value="False" />
+  <projectSetting name="GooglePlayServices.UseJetifier" value="True" />
 </projectSettings>
