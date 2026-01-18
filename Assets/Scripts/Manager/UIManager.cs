@@ -26,6 +26,13 @@ public class UIManager : MonoBehaviour
 
     private const string ShopKey = "ShopWindow";
 
+    private void Reset()
+    {
+      
+        shopWindow = this.TryFindChild("ShopWindow").GetComponent<ShopWindow>();
+        curGold = this.TryFindChild("GoldText").GetComponent<TMP_Text>();
+    }
+
     private void Start()
     {
         AdButton.onClick.RemoveAllListeners();
