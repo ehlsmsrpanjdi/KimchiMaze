@@ -1212,9 +1212,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7f5ce43189ef40245bff8d98ef02b780, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _androidGameId: 6027053
-  _iOSGameId: 6027052
-  _testMode: 1
+  androidGameId: 6027053
+  iosGameId: 6027052
+  rewardedAndroidAdUnitId: Rewarded_Android
+  rewardediOSAdUnitId: Rewarded_iOS
+  testMode: 1
+  autoLoadRewardedAfterInit: 1
 --- !u!4 &1284628175
 Transform:
   m_ObjectHideFlags: 0
