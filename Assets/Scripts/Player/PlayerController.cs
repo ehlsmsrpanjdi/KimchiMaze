@@ -13,11 +13,26 @@ public class PlayerController : MonoBehaviour
     private int mazeSize;
     private Vector3Int goalPosition; // 추가
 
-    private CameraController cameraController;
+    public CameraController cameraController { get; private set; }
 
     public Vector3Int GridPosition => gridPosition;
     public event Action<Vector3Int> OnPositionChanged;
     public event Action<float> OnGoalReached; // 도착 이벤트
+
+    public static PlayerController Instance { get; private set; }
+
+    private void Awake()
+    {
+        if (Instance == null && Instance != this)
+        {
+            Instance = this;
+        }
+    }
+
+    private void OnDestroy()
+    {
+        Instance = null;
+    }
 
     public void Initialize(Vector3Int startPos, bool[,,] mazeData, int size, Vector3Int goal)
     {
@@ -45,23 +60,13 @@ public class PlayerController : MonoBehaviour
         }
         else
         {
-            HandleInput();
+            //HandleInput();
         }
     }
 
-    void HandleInput()
+    public void HandleInput(Vector3 worldDir)
     {
         if (cameraController == null) return;
-
-        Transform cam = cameraController.transform;
-        Vector3 worldDir = Vector3.zero;
-
-        if (Input.GetKeyDown(KeyCode.W)) worldDir = cam.forward;
-        else if (Input.GetKeyDown(KeyCode.S)) worldDir = -cam.forward;
-        else if (Input.GetKeyDown(KeyCode.A)) worldDir = -cam.right;
-        else if (Input.GetKeyDown(KeyCode.D)) worldDir = cam.right;
-        else if (Input.GetKeyDown(KeyCode.Q)) worldDir = cam.up;
-        else if (Input.GetKeyDown(KeyCode.E)) worldDir = -cam.up;
 
         if (worldDir != Vector3.zero)
         {

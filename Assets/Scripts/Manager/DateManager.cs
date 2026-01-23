@@ -1,6 +1,4 @@
-using System;
-using System.Data;
-using Unity.VisualScripting;
+ï»¿using System;
 using UnityEngine;
 
 public class DateManager
@@ -27,7 +25,6 @@ public class DateManager
     }
 
     private int resetTime = 12;
-    private GameManager gameManager;
 
     private const string Key_Day = "Day_Key";
     private const string Key_Count = "Count_Key";
@@ -45,20 +42,13 @@ public class DateManager
     }
 
 
-    public void init(GameManager gm)
-    {
-        gameManager = gm;
-        
-        DayReset();
-       
-    }
     private string GetDayKeyNow()
     {
         DateTime kstNow = GetKstNow();
         DateTime effective = (kstNow.Hour < resetTime) ? kstNow.Date.AddDays(-1) : kstNow.Date;
         return effective.ToString("yyyyMMdd");
     }
-  
+
 
     private void InitializeTimeZone()
     {
@@ -74,7 +64,7 @@ public class DateManager
             }
             catch
             {
-                // ÇÃ·§Æû È£È¯¼º ¹®Á¦ ¹ß»ý ½Ã ·ÎÄÃ ½Ã½ºÅÛ ½Ã°£À¸·Î Æú¹é
+                // í”Œëž«í¼ í˜¸í™˜ì„± ë¬¸ì œ ë°œìƒ ì‹œ ë¡œì»¬ ì‹œìŠ¤í…œ ì‹œê°„ìœ¼ë¡œ í´ë°±
                 kst = TimeZoneInfo.Local;
             }
         }
@@ -83,10 +73,10 @@ public class DateManager
 
     private DateTime GetKstNow()
     {
-        return TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, kst); //½Ã°£ ¹Þ¾Æ¿È
+        return TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, kst); //ì‹œê°„ ë°›ì•„ì˜´
     }
 
-      
+
 
     private void DayReset()
     {
@@ -95,7 +85,7 @@ public class DateManager
 
         if (saveKey == todayKey)
         {
-            return;        
+            return;
         }
 
         PlayerPrefs.SetString(Key_Day, todayKey);
@@ -119,19 +109,19 @@ public class DateManager
             return EnterResult.Success;
         }
 
-        // ÇÑµµ ÃÊ°úÀÏ ¶§: ¹«¾ùÀ» ÇØ¾ß ´õ µé¾î°¥ ¼ö ÀÖ´ÂÁö ¾È³»
+        // í•œë„ ì´ˆê³¼ì¼ ë•Œ: ë¬´ì—‡ì„ í•´ì•¼ ë” ë“¤ì–´ê°ˆ ìˆ˜ ìžˆëŠ”ì§€ ì•ˆë‚´
         bool pass = IsPassPurchased();
         bool adUsed = IsAdBonusUsed();
 
 
         if (!adUsed)
-        { 
-        return EnterResult.NeedAd;
+        {
+            return EnterResult.NeedAd;
         }
 
         if (!pass)
-        { 
-        return EnterResult.NeedPurchase;
+        {
+            return EnterResult.NeedPurchase;
         }
 
 
@@ -145,7 +135,7 @@ public class DateManager
         PlayerPrefs.Save();
     }
 
-    
+
 
     private int GetMaxTodayInternal()
     {

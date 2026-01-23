@@ -1,4 +1,5 @@
 ﻿using UnityEngine;
+using UnityEngine.InputSystem;
 
 public class CameraController : MonoBehaviour
 {
@@ -6,67 +7,64 @@ public class CameraController : MonoBehaviour
 
     [Header("Orbit")]
     [SerializeField] private float distance = 10f;
-    [SerializeField] private float focusHeight = 1.0f;   // 플레이어 바라보는 높이(머리쪽)
-    [SerializeField] private float rotationSpeed = 6f;    // 0~1 진행 속도(클수록 빠름)
+    [SerializeField] private float focusHeight = 1.0f;
+    [SerializeField] private float rotationSpeed = 6f;
+
+    [Header("Swipe Settings")]
+    [SerializeField] private float minSwipeDistance = 50f; // 최소 스와이프 거리(픽셀)
 
     public enum ViewDirection { Front, Right, Back, Left, Top, Bottom }
 
-    // 수평 4방향 (0=Front,1=Right,2=Back,3=Left)
     private int yawIndex = 0;
     private int targetYawIndex = 0;
-
-    // 수직 4단계 (0=Side,1=Top,2=Opposite(뒤집힘),3=Bottom)
     private int pitchIndex = 0;
     private int targetPitchIndex = 0;
 
-    private float t = 1f;                 // 0~1
+    private float t = 1f;
     private Quaternion startRot;
     private Quaternion endRot;
-
     private Vector3 startOffset;
     private Vector3 endOffset;
 
     public bool IsRotating => t < 1f;
-
-    // 기존 코드 호환용
     public ViewDirection CurrentDirection { get; private set; } = ViewDirection.Front;
+
+    // Input System
+    private Vector2 touchStartPos;
+    private bool isTouching = false;
 
     void Start()
     {
-        // 초기 상태를 현재 트랜스폼 기준으로 맞추고 싶으면 여기서 복원 로직을 추가할 수 있음.
-        // 지금은 (Front, Side) 시작.
         ApplyInstant();
     }
 
     void Update()
     {
-        HandleRotationInput();
+        HandleSwipeInput();
+
+#if UNITY_EDITOR
+        HandleKeyboardInput(); // 에디터에서 테스트용
+#endif
     }
 
     void LateUpdate()
     {
         if (target == null) return;
 
-        // 진행
         if (t < 1f)
         {
             t += rotationSpeed * Time.deltaTime;
             if (t >= 1f)
             {
                 t = 1f;
-
                 yawIndex = targetYawIndex;
                 pitchIndex = targetPitchIndex;
                 UpdateCurrentDirection();
-
-                // 회전 완료 시점 이벤트가 필요하면 여기서 호출
                 NotifyCameraRotation();
             }
         }
 
         Vector3 focus = target.position + Vector3.up * focusHeight;
-
-        // 회전/위치 보간(직접 만든 회전만 사용, LookRotation 없음)
         Quaternion rot = Quaternion.Slerp(startRot, endRot, t);
         Vector3 offset = Vector3.Lerp(startOffset, endOffset, t);
 
@@ -74,58 +72,126 @@ public class CameraController : MonoBehaviour
         transform.rotation = rot;
     }
 
-    void HandleRotationInput()
+    void HandleSwipeInput()
     {
         if (IsRotating) return;
 
+        var pointer = Pointer.current;
+        if (pointer == null) return;
+
+        // 터치/마우스 시작
+        if (pointer.press.wasPressedThisFrame)
+        {
+            touchStartPos = pointer.position.ReadValue();
+            isTouching = true;
+        }
+        // 터치/마우스 끝
+        else if (pointer.press.wasReleasedThisFrame && isTouching)
+        {
+            Vector2 touchEndPos = pointer.position.ReadValue();
+            DetectSwipe(touchStartPos, touchEndPos);
+            isTouching = false;
+        }
+    }
+
+    void DetectSwipe(Vector2 startPos, Vector2 endPos)
+    {
+        Vector2 swipeDelta = endPos - startPos;
+
+        if (swipeDelta.magnitude < minSwipeDistance) return;
+
         bool changed = false;
 
-        if (Input.GetKeyDown(KeyCode.RightArrow))
+        // 가로/세로 중 더 큰 방향으로 판단
+        if (Mathf.Abs(swipeDelta.x) > Mathf.Abs(swipeDelta.y))
+        {
+            // 좌우 스와이프
+            if (swipeDelta.x > 0) // 오른쪽으로 스와이프 → 왼쪽 키 효과
+            {
+                targetYawIndex = (yawIndex + 1) % 4;
+                targetPitchIndex = pitchIndex;
+                changed = true;
+            }
+            else // 왼쪽으로 스와이프 → 오른쪽 키 효과
+            {
+                targetYawIndex = (yawIndex + 3) % 4;
+                targetPitchIndex = pitchIndex;
+                changed = true;
+            }
+        }
+        else
+        {
+            // 상하 스와이프 (방향 반대로 변경)
+            if (swipeDelta.y > 0) // 위로 스와이프 → 아래 키 효과
+            {
+                targetYawIndex = yawIndex;
+                targetPitchIndex = (pitchIndex + 3) % 4; // 변경됨
+                changed = true;
+            }
+            else // 아래로 스와이프 → 위 키 효과
+            {
+                targetYawIndex = yawIndex;
+                targetPitchIndex = (pitchIndex + 1) % 4; // 변경됨
+                changed = true;
+            }
+        }
+
+        if (changed)
+        {
+            BeginTransition();
+        }
+    }
+
+#if UNITY_EDITOR
+    void HandleKeyboardInput()
+    {
+        if (IsRotating) return;
+
+        var keyboard = Keyboard.current;
+        if (keyboard == null) return;
+
+        bool changed = false;
+
+        if (keyboard.rightArrowKey.wasPressedThisFrame)
         {
             targetYawIndex = (yawIndex + 3) % 4;
             targetPitchIndex = pitchIndex;
             changed = true;
         }
-        else if (Input.GetKeyDown(KeyCode.LeftArrow))
+        else if (keyboard.leftArrowKey.wasPressedThisFrame)
         {
             targetYawIndex = (yawIndex + 1) % 4;
             targetPitchIndex = pitchIndex;
             changed = true;
         }
-        else if (Input.GetKeyDown(KeyCode.UpArrow))
+        else if (keyboard.upArrowKey.wasPressedThisFrame)
         {
             targetYawIndex = yawIndex;
-            targetPitchIndex = (pitchIndex + 1) % 4; // Side->Top->Opposite->Bottom->Side
+            targetPitchIndex = (pitchIndex + 1) % 4;
             changed = true;
         }
-        else if (Input.GetKeyDown(KeyCode.DownArrow))
+        else if (keyboard.downArrowKey.wasPressedThisFrame)
         {
             targetYawIndex = yawIndex;
-            targetPitchIndex = (pitchIndex + 3) % 4; // 역방향
+            targetPitchIndex = (pitchIndex + 3) % 4;
             changed = true;
         }
 
-        if (!changed) return;
-
-        BeginTransition();
+        if (changed) BeginTransition();
     }
+#endif
 
     void BeginTransition()
     {
-        // 시작 상태(현재 인덱스) 회전/오프셋
         startRot = ComputeOrbitRotation(yawIndex, pitchIndex);
         startOffset = startRot * new Vector3(0f, 0f, -distance);
 
-        // 목표 상태 회전/오프셋
         endRot = ComputeOrbitRotation(targetYawIndex, targetPitchIndex);
         endOffset = endRot * new Vector3(0f, 0f, -distance);
 
-        // 진행 시작
         t = 0f;
     }
 
-    // "진짜 공전 회전": yaw는 월드 Y축, pitch는 월드 X축 기준으로 먼저 적용 후 yaw
-    // 이 회전 자체가 카메라의 forward/up/right를 결정하므로 플립이 생길 여지가 줄어듭니다.
     Quaternion ComputeOrbitRotation(int yawI, int pitchI)
     {
         float yaw = yawI * 90f;
@@ -134,7 +200,6 @@ public class CameraController : MonoBehaviour
         Quaternion yawRot = Quaternion.AngleAxis(yaw, Vector3.up);
         Quaternion pitchRot = Quaternion.AngleAxis(pitch, Vector3.right);
 
-        // pitch 먼저, 그 다음 yaw
         return yawRot * pitchRot;
     }
 
@@ -143,9 +208,8 @@ public class CameraController : MonoBehaviour
         if (pitchIndex == 1) { CurrentDirection = ViewDirection.Top; return; }
         if (pitchIndex == 3) { CurrentDirection = ViewDirection.Bottom; return; }
 
-        // Side(0) 또는 Opposite(2)
         int y = yawIndex;
-        if (pitchIndex == 2) y = (yawIndex + 2) % 4; // 반대면
+        if (pitchIndex == 2) y = (yawIndex + 2) % 4;
 
         CurrentDirection = y switch
         {
@@ -170,7 +234,6 @@ public class CameraController : MonoBehaviour
 
     void NotifyCameraRotation()
     {
-        // 기존 연결 유지
         var player = target?.GetComponent<PlayerController>();
         if (player != null)
             CubeVisibilityManager.Instance.OnCameraRotated(CurrentDirection, player.GridPosition);
